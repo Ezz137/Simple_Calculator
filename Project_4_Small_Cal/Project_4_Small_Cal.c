@@ -18,8 +18,8 @@ int main(void)
 	LCD_vInit();
 	Keypad_vInit();
 	Buz_vInit('b',4);
-	unsigned char counter=0,i=0,x=0xff,Operator=0,Status=0,flag1=0,flag2=0,n=0;
-	unsigned long Num_1=0,Num_2=0;
+	unsigned char counter=0,i=0,x=0xff,Operator=0,Status=0,flag1=0,flag2=0,syntax_error=1,operation_flag=0,Ans_flag=0;
+	unsigned long long Num_1=0,Num_2=0,n=0;
 	volatile unsigned long long res=0,R;
 	unsigned char arr[16]={0};
 	LCD_vSendString("Welcome");
@@ -32,15 +32,18 @@ int main(void)
 		Buz_vTurnOFF('b',4);
 		while((x=Keypad_uRead())==0xff);
 		_delay_ms(500);
-		if (x=='A')
+		if (x=='A' || Ans_flag==1 || Status==0)
 		{
 			LCD_vClrscreen();
 			Num_1=0;
 			Num_2=0;
+			syntax_error=1;
+			operation_flag=0;
 			counter=0;
 			Operator=0;
 			Status=0;
 			flag1=0;
+			Ans_flag=0;
 			flag2=0;
 			__Memset__(arr,0,16);	
 		}
@@ -56,101 +59,75 @@ int main(void)
 			else if ((flag2==0)&&(flag1==2))
 			{
 				arr[counter]=x-48;
+				syntax_error=0;
 				++counter;
 			}
 		}
-		else if (x=='*')
+		else if (x=='*' && Status==1)
 		{	
-			if (Status==0)
-			{
-				LCD_vClrscreen();
-				Num_1=0;
-				Num_2=0;
-				flag1=0;
-				counter=0;
-				Operator=0;
-				flag2=0;
-				__Memset__(arr,0,16);
-			}
-			else
-			{
-				Operator='*';
-				flag1 =1;
-				LCD_vSendChar(Operator);
-			}
+			operation_flag=1;
+			Operator='*';
+			flag1 =1;
+			LCD_vSendChar(Operator);
 		}
-		else if (x=='/')
+		else if (x=='/' && Status==1)
 		{	
-			if (Status==0)
-			{
-				LCD_vClrscreen();
-				Num_1=0;
-				Num_2=0;
-				counter=0;
-				flag1=0;
-				Operator=0;
-				flag2=0;
-				__Memset__(arr,0,16);
-			}
-			else
-			{
-				Operator='/';
-				flag1=1;
-				LCD_vSendChar(Operator);
-			}
+			operation_flag=1;
+			Operator='/';
+			flag1=1;
+			LCD_vSendChar(Operator);
 		}
-		else if (x=='-')
+		else if (x=='-' && Status==1)
 		{
-			if (Status==0)
-			{
-				LCD_vClrscreen();
-				Num_1=0;
-				Num_2=0;
-				counter=0;
-				Operator=0;
-				flag1=0;
-				flag2=0;
-				__Memset__(arr,0,16);	
-			}
-			else
-			{
-				Operator='-';
-				flag1=1;
-				LCD_vSendChar(Operator);
-			}
+			operation_flag=1;
+			Operator='-';
+			flag1=1;
+			LCD_vSendChar(Operator);
 		}
-		else if (x=='+')
+		else if (x=='+' && Status==1)
 		{
-			if (Status==0)
-			{
-				LCD_vClrscreen();
-				Num_1=0;
-				Num_2=0;
-				counter=0;
-				Operator=0;
-				flag1=0;
-				flag2=0;
-				__Memset__(arr,0,16);	
-			}
-			else
-			{
-				Operator='+';
-				flag1=1;
-				LCD_vSendChar(Operator);
-			}
+			operation_flag=1;
+			Operator='+';
+			flag1=1;
+			LCD_vSendChar(Operator);
 		}
-		else if (x=='=')
+		else if (x=='=' && Status==1)
 		{
-			if (Status==0)
+			Status=0;
+			Ans_flag=1;
+			if (syntax_error==1 && operation_flag==1)
 			{
 				LCD_vClrscreen();
-				Num_1=0;
-				Num_2=0;
+				LCD_vSendString("Syntax Error");
+				_delay_ms(1000);
+			}
+			else if (syntax_error==1 && operation_flag==0)
+			{
+				LCD_vSendChar('=');
+				Num_1=Num_uCreate(arr,counter);
+				flag1=2;
 				counter=0;
-				Operator=0;
-				flag1=0;
-				flag2=0;
-				__Memset__(arr,0,16);	
+				if (Num_1==0)
+				{
+						LCD_vMoveCursor(2,16);
+						LCD_vSendChar('0');
+				}
+				else if (Num_1>0)
+				{
+					LCD_vMoveCursor(2,16);
+					LCD_vSendCmd(SHIFT_CURSOR_TO_LEFT_WHILE_WRITING);
+					for (R=Num_1;R>0;R/=10)
+					{
+						counter++;
+					}
+					for (i=0;i<counter;i++)
+					{
+						n=Num_1%10;
+						LCD_vSendChar(n+48);
+						Num_1/=10;
+					}
+					LCD_vSendCmd(SHIFT_CURSOR_TO_RIGHT_WHILE_WRITING);
+				}	
 			}
 			else
 			{
@@ -160,14 +137,14 @@ int main(void)
 		}		
 		if ((flag1==1)&&(flag2==0))
 		{			
-			Num_uCreate(arr,counter,&Num_1);
+			Num_1=Num_uCreate(arr,counter);
 			flag1=2;
 			counter=0;
 			__Memset__(arr,0,16);
 		}
 		 if ((flag2==1)&&(flag1==2))
 		{
-			Num_uCreate(arr,counter,&Num_2);
+			Num_2=Num_uCreate(arr,counter);
 			flag2=2;
 			counter=0;
 		}
