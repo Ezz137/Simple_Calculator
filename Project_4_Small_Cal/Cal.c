@@ -5,32 +5,21 @@
  *  Author: zezom
  */ 
 
-#include "LCD.h"
-#include "Keypad.h"
 #include "avr/io.h"
 
-void Num_uCreate (unsigned char arr[],unsigned char counter,unsigned long *Num)
+long long Num_uCreate (unsigned char arr[],unsigned char counter)
 {
-	if (counter==1)
+	long long returned_valu=0,R=1;
+	unsigned char i;
+	for (i=1;(i<counter);i++)
 	{
-		*Num=arr[0];
+		R=R*10;
 	}
-	else if (counter==2)
+	for (i=0;i<counter;i++,R/=10)
 	{
-		*Num=arr[0]*10+arr[1];
+		returned_valu=returned_valu+arr[i]*R;
 	}
-	else if (counter==3)
-	{
-		*Num=arr[0]*100+arr[1]*10+arr[2];
-	}
-	else if (counter==4)
-	{
-		*Num=arr[0]*1000+arr[1]*100+arr[2]*10+arr[3];
-	}
-	else if (counter==5)
-	{
-		*Num=arr[0]*10000+arr[1]*1000+arr[2]*100+arr[3]*10+arr[4];
-	}
+	return returned_valu;
 }
 
 void __Memset__ (unsigned char *ptr,unsigned char valu,unsigned char _size_)
